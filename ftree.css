@@ -1,0 +1,41 @@
+body {
+    font: 10px sans-serif;
+}
+
+.linage {
+    fill: none;
+    stroke: #000;
+}
+
+.marriage {
+    fill: none;
+    stroke: black;
+}
+
+.woman, .man {
+    display: table-cell;
+    vertical-align: bottom;
+    text-align: center;
+}
+
+.man {
+    background-color: #99e6e6;/*lightgrey;/*lightblue;*/
+}
+.woman {
+    background-color: #ffad99;/*lightgrey;/*lightblue;*/
+}
+
+.nodeText {
+    padding: 0;
+    margin-bottom: 20;
+}
+
+.sex-symbol {
+    color:white;
+    font-size: 60px;
+}
+
+.emphasis {
+    font-style: italic;
+}
+  
