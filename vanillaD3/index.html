@@ -45,18 +45,20 @@ var treeData =
 
 // set the dimensions and margins of the diagram
 var margin = {top: 40, right: 90, bottom: 50, left: 90},
-    width = 660 - margin.left - margin.right,
-    height = 500 - margin.top - margin.bottom;
+    width = 760 - margin.left - margin.right,
+    height = 1000 - margin.top - margin.bottom;
 
 // declares a tree layout and assigns the size
-var treemap = d3.tree()
-    .size([width, height]);
+var tree = d3.tree()
+    .size([width, height-100]);
 
 //  assigns the data to a hierarchy using parent-child relationships
 var nodes = d3.hierarchy(treeData);
+nodes.children[0].children[0].depth=1
+nodes.children[0].children[0].height=1
 
 // maps the node data to the tree layout
-nodes = treemap(nodes);
+nodes = tree(nodes);
 
 // append the svg obgect to the body of the page
 // appends a 'group' element to 'svg'
@@ -92,7 +94,7 @@ var node = g.selectAll(".node")
 
 // adds the circle to the node
 node.append("circle")
-  .attr("r", 40);
+  .attr("r", 20);
 
 // adds the text to the node
 node.append("text")

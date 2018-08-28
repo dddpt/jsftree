@@ -5,95 +5,75 @@
     "textClass": "nodeText",
     "marriages": [{
       "spouse": {
-        "name": "Maternal Grandfather"
+        "name": "Maternal Grandfather",
+        "class": "man",
+        "textClass": "nodeText"
       },
-      "children": [{
-        "name": "Mother"
-      },{
-        "name": "+ Add maternal uncle/aunt"
+      "children": [
+        {
+          "name": "+ Add maternal uncle/aunt",
+          "class": "add-node",
+          "textClass": "nodeText"
+        },
+        {
+        "name": "Mother",
+        "class": "woman",
+        "textClass": "nodeText",
+        "marriages": [{
+          "spouse": 
+          {
+            "name": "Father",
+            "class": "man",
+            "textClass": "nodeText"
+          },
+          "children": [{
+            "name": "+ Add sibling",
+            "class": "add-node",
+            "textClass": "nodeText"
+          },
+          {
+            "name": "You",
+            "class": "you",
+            "textClass": "nodeText",
+            "marriages": [{
+              "spouse": {
+                "name": "Spouse",
+                "class": "add-node",
+                "textClass": "nodeText"
+              },
+              "children": [{
+                "name": "Children 1",
+                "class": "no-gender",
+                "textClass": "nodeText"
+              },{
+                "name": "+ Add child",
+                "class": "add-node",
+                "textClass": "nodeText"
+              }]
+            }]
+          }]
+        }]
       }]
     }]
   },
-  {
-    "name": "Maternal Grandfather",
-    "class": "man",
-    "textClass": "nodeText"
-  },
-  {
-    "name": "Mother",
-    "class": "woman",
-    "textClass": "nodeText",
-    "marriages": [{
-      "spouse": {
-        "name": "Father"
-      },
-      "children": [{
-        "name": "You"
-      },{
-        "name": "+ Add sibling"
-      }]
-    }]
-  },
-
-
   {
     "name": "Paternal Grandmother",
     "class": "woman",
     "textClass": "nodeText",
     "marriages": [{
       "spouse": {
-        "name": "Paternal Grandfather"
+        "name": "Paternal Grandfather",
+        "class": "man",
+        "textClass": "nodeText"
       },
       "children": [{
         "name": "Father"
-      },{
-        "name": "+ Add paternal uncle/aunt"
-      }]
-    }]
-  },
-  {
-    "name": "Paternal Grandfather",
-    "class": "man",
-    "textClass": "nodeText"
-  },
-  {
-    "name": "Father",
-    "class": "man",
-    "textClass": "nodeText"
-  },
-
-
-  {
-    "name": "You",
-    "class": "no-gender",
-    "textClass": "nodeText",
-    "marriages": [{
-      "spouse": {
-        "name": "Spouse"
       },
-      "children": [{
-        "name": "Children 1"
-      },{
-        "name": "+ Add child"
+      {
+        "name": "+ Add paternal uncle/aunt",
+        "class": "add-node",
+        "textClass": "nodeText"
       }]
     }]
-  },
-  {
-    "name": "Spouse",
-    "class": "no-gender",
-    "textClass": "nodeText"
-  },
-  {
-    "name": "Children 1",
-    "class": "no-gender",
-    "textClass": "nodeText"
-  },
-  {
-    "name": "+ Add child",
-    "class": "no-gender",
-    "textClass": "nodeText"
   }
-
-
-
 ]

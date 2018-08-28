@@ -12,7 +12,7 @@ body {
     stroke: black;
 }
 
-.woman, .man {
+.woman, .man, .add-node, .no-gender, .you {
     display: table-cell;
     vertical-align: bottom;
     text-align: center;
@@ -24,6 +24,12 @@ body {
 .woman {
     background-color: #ffad99;/*lightgrey;/*lightblue;*/
 }
+.add-node, .no-gender {
+    background-color: lightgrey;/*lightgrey;/*lightblue;*/
+}
+.you {
+    background-color: #9fff80;/*lightgrey;/*lightblue;*/
+}
 
 .nodeText {
     padding: 0;
@@ -32,7 +38,7 @@ body {
 
 .sex-symbol {
     color:white;
-    font-size: 60px;
+    font-size: 48px;
 }
 
 .emphasis {
