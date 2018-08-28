@@ -12,6 +12,22 @@ body {
     stroke: black;
 }
 
+
+/*svg .icon :before {
+    content: "\f007";
+    font-family: FontAwesome;
+    font-style: normal;
+    font-weight: normal;
+    text-decoration: inherit;
+/*--adjust as necessary--
+    color: #000;
+    font-size: 18px;
+    padding-right: 0.5em;
+    position: absolute;
+    top: 10px;
+    left: 0;
+}*/
+
 .woman, .man, .add-node, .no-gender, .you {
     display: table-cell;
     vertical-align: bottom;
@@ -19,16 +35,19 @@ body {
 }
 
 .man {
-    background-color: #99e6e6;/*lightgrey;/*lightblue;*/
+    fill: #80ffaa;/*#99e6e6;/*lightgrey;/*lightblue;*/
 }
 .woman {
-    background-color: #ffad99;/*lightgrey;/*lightblue;*/
+    fill: #ffb380;/*lightgrey;/*lightblue;*/
 }
 .add-node, .no-gender {
-    background-color: lightgrey;/*lightgrey;/*lightblue;*/
+    fill: lightgrey;/*lightgrey;/*lightblue;*/
 }
 .you {
-    background-color: #9fff80;/*lightgrey;/*lightblue;*/
+    fill: #ccccff/*#9fff80;/*lightgrey;/*lightblue;*/
+}
+.no-gender {
+    fill: #99e6e6;/*lightgrey;/*lightblue;*/
 }
 
 .nodeText {
@@ -36,12 +55,20 @@ body {
     margin-bottom: 20;
 }
 
-.sex-symbol {
-    color:white;
-    font-size: 48px;
+.icon {
+  color:red;
+  font-size: 48px;
 }
+/*foreignObject div {
+  width: 100px;
+  height: 100px;
+  background-color:red;
+}*/
 
 .emphasis {
     font-style: italic;
 }
-  
+
+svg{
+  border: solid;
+}
