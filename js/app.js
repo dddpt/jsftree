@@ -161,3 +161,29 @@ $.getJSON( "basic_family.json", function( treeData ) {
 
 
 });
+
+
+// DEFAULTSDEEP TEST
+
+
+source = {
+  aa: 11,
+  bb: 22,
+  cc: {
+    ccc: "c"
+  },
+  dd: 44
+}
+
+target = {
+  aa: 1,
+  bb: 2,
+  cc: {
+    aaa: "a",
+    bbb: "b"
+  }
+}
+
+result = _.defaultsDeep(target,source)
+target==result // true!
+// _.defaultsDeep() mutates target objects & returns it as result

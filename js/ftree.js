@@ -90,12 +90,13 @@ class fTreeBuilder{
   // - if no depth given, computes it using _computeDepth
   // - note that if a node is only updated (versus added), addSubTree(updatedNode, ...) will do nothing
   addSubtree(node, linkedNode, depth, nodeSize,hidden){
+    console.log("addSubtree for node: "+node.id+" with depth "+depth)
+    
     // if node already flatNodes: exit immediately 
     if(this.flatNodes[node.id]){
       node = this.flatNodes[node.id]
     }
 
-    console.log("addSubtree for node: "+node.id+" with depth "+depth)
     // add depth
     if(depth==undefined){
       depth = this._computeDepth(node)
