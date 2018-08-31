@@ -165,6 +165,10 @@ $.getJSON( "basic_family.json", function( treeData ) {
 
 // DEFAULTSDEEP TEST
 
+linkedFromSourceNode = {
+  ll: "huhu",
+  arr: [1,2,3]
+}
 
 source = {
   aa: 11,
@@ -172,7 +176,17 @@ source = {
   cc: {
     ccc: "c"
   },
-  dd: 44
+  dd: 44,
+  links: [linkedFromSourceNode]
+}
+
+linkedFromTargetNode = {
+  ll: "haha",
+  arr: [4,5,6]
+}
+linkedFromTargetNode2 = {
+  ll: "HOHO",
+  arr: [7,8,9]
 }
 
 target = {
@@ -181,9 +195,23 @@ target = {
   cc: {
     aaa: "a",
     bbb: "b"
-  }
+  },
+  links:[linkedFromTargetNode,linkedFromTargetNode2]
 }
+
+linkedFromTargetNode2.circularRef = target
 
 result = _.defaultsDeep(target,source)
 target==result // true!
-// _.defaultsDeep() mutates target objects & returns it as result
+target.links[1]==linkedFromTargetNode2 // true
+target.links[1].circularRef==linkedFromTargetNode2.circularRef // true
+target==linkedFromTargetNode2.circularRef // true
+
+/*
+Basic: _.defaultsDeep() mutates target objects & returns it as result
+Objects: it is non-ambiguous&trivial with objects: add missing properties, doesn't touch the pre-existing ones in the target objects
+Arrays:
+it is more tricky with arrays: sometimes, one might want that source&target of a given array be appended, here
+a source array element is considered the source for the target array element with same index... CAUTION WITH ARRAYS!
+Circular references: seems to work without problem
+*/
