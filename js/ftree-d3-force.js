@@ -5,12 +5,8 @@ console.log("hello")
 var width = window.innerWidth,
     height = window.innerHeight;
 
-var color = d3.scale.category20();
+var color = d3.scaleOrdinal(d3.schemeCategory10);
 
-var force = d3.layout.force()
-    .charge(-100)
-    .linkDistance(20)
-    .size([width, height]);
 
 function over() {
     d3.event.stopPropagation();
@@ -47,37 +43,44 @@ var dropHint = svg.append('text')
     .attr('transform', 'translate(' + [window.innerWidth / 2, window.innerHeight / 2] + ')');
 
 console.log("hellooo")
-function buildGraph(graph) {
-  force
-      .nodes(graph.nodes)
-      .links(graph.links)
-      .start();
 
-  var link = svg.selectAll('.link')
+var simulation = 0;
+function buildGraph(graph) {
+  simulation = d3.forceSimulation()
+    .force("charge", d3.forceManyBody().strength(-20))
+    .force("link", d3.forceLink().distance(20))
+
+  simulation.nodes(graph.nodes)
+  simulation.force("link").links(graph.links)
+
+  var svgg = svg.append("g")
+      .attr("transform","translate("+width/2+","+height/2+")")
+  
+  var link = svgg.selectAll('.link')
       .data(graph.links)
     .enter().append('line')
       .attr('class', 'link')
       .style('stroke-width', function(d) { return Math.sqrt(d.value); });
 
-  function lastName(n) {
+  /*function lastName(n) {
       var parts =  n.split(/\s/);
       return n[n.length - 1];
-  }
+  }*/
 
-  var node = svg.selectAll('.node')
+  var node = svgg.selectAll('.node')
       .data(graph.nodes)
     .enter().append('g')
       .attr('class', 'node')
-      .call(force.drag);
+      //.call(simulation.drag);
 
   node.append('circle')
-      .attr('r', function(d) { return 5; })
-      .style('fill', function(d) { return color(lastName(d.name)); });
+      .attr('r', 5)
+      .style('fill', d=> "blue");//return color(lastName(d.famc)); });
 
   node.append('text')
-      .text(function(d) { return d.name; });
+      .text(d => d.name);
 
-  force.on('tick', function() {
+  simulation.on('tick', function() {
     link.attr('x1', function(d) { return d.source.x; })
         .attr('y1', function(d) { return d.source.y; })
         .attr('x2', function(d) { return d.target.x; })
@@ -89,3 +92,11 @@ function buildGraph(graph) {
 }
 
 console.log("helloooo")
+
+var resp = $.get( "./example_gedcom.ged" ,function(data){
+
+
+  dropHint.remove();
+  buildGraph(parseGedcom.d3ize(parseGedcom.parse(data)));
+}  );
+console.log("hellooooo")
