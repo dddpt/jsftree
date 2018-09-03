@@ -7,7 +7,7 @@ var width = window.innerWidth,
 
 var color = d3.scaleOrdinal(d3.schemeCategory10);
 
-
+/* ============================ GEDCOM DROPZONE ============================ */
 function over() {
     d3.event.stopPropagation();
     d3.event.preventDefault();
@@ -44,6 +44,8 @@ var dropHint = svg.append('text')
 
 console.log("hellooo")
 
+/* ============================ BUILD GRAPH ============================ */
+
 var simulation = 0;
 function buildGraph(graph) {
   simulation = d3.forceSimulation()
@@ -78,7 +80,7 @@ function buildGraph(graph) {
       .style('fill', d=> "blue");//return color(lastName(d.famc)); });
 
   node.append('text')
-      .text(d => d.name);
+      .text(d => d.id);
 
   simulation.on('tick', function() {
     link.attr('x1', function(d) { return d.source.x; })
@@ -92,6 +94,9 @@ function buildGraph(graph) {
 }
 
 console.log("helloooo")
+
+/* ============================ LOADING DEFAULT GEDCOM ============================ */
+
 
 var resp = $.get( "./example_gedcom.ged" ,function(data){
 

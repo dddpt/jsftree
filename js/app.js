@@ -40,7 +40,7 @@ function updateFamilyTree(ftreeData, source,isGedcom){
     console.log("GEDCOM")
     ftree = new fTreeBuilderGedcom(ftreeData,{width:100,height:100},{width:50,height:50})
     // maps the node data to the tree layout
-    nodes = ftree.nodes
+    nodes = ftree.prettyNodes()
     links = ftree.prettyLinks()
   } else {
     console.log("no GEDCOM")

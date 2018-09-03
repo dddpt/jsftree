@@ -15,24 +15,24 @@ function addLinksToNodes(nodes){
   function addLinksToNode(node){
     famc = getTagsData(node,"FAMC")[0]
     if(famc){
-      node.famc=getNodeFromId(nodes, famc)
+      node.famc=famc //getNodeFromId(nodes, famc)
     }
     husb = getTagsData(node,"HUSB")[0]
     if(husb){
-      node.husb=getNodeFromId(nodes, husb)
+      node.husb=husb//getNodeFromId(nodes, husb)
     }
     wife = getTagsData(node,"WIFE")[0]
     if(wife){
-      node.wife=getNodeFromId(nodes, wife)
+      node.wife=wife//getNodeFromId(nodes, wife)
     }
 
     fams = getTagsData(node,"FAMS")
     if(fams[0]){
-      node.fams=fams.map(n => getNodeFromId(nodes, n))
+      node.fams=fams//.map(n => getNodeFromId(nodes, n))
     }
     chil = getTagsData(node,"CHIL")
     if(chil[0]){
-      node.chil=chil.map(n => getNodeFromId(nodes, n))
+      node.chil=chil//.map(n => getNodeFromId(nodes, n))
     }
     return node;
   }
