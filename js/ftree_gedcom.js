@@ -38,6 +38,8 @@ class fTreeBuilderGedcom{
     this.nodeSeparation = nodeSeparation // object with width and height value
     this.nodes=data.nodes
     this.links=data.links
+    //this.nodes= data.nodes.reduce((dic,node) => {dic[node.id] = node; return dic},{}) // transform data.nodes array into dictionnary
+    //this.links=data.links.map(l => {return {source: data.nodes[l.source].id, target: data.nodes[l.target].id   }}) // change from nodes index to nodes id
     this.width = 0 // maximum width needed among the row
 
     // assume that all non-connected nodes start at depth 0
