@@ -1,4 +1,3 @@
-var gdepths = 0
 
 
 class fTreeBuilder{
