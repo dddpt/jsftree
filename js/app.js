@@ -1,3 +1,5 @@
+var d3ized_ged = 0;
+
 
 // set the dimensions and margins of the diagram
 var margin = {top: 0, right: 0, bottom: 0, left: 0},
@@ -8,39 +10,51 @@ var transitionsDuration = 500 // duration of transitions in msec
 
 // global variables (mainly used for DEBUGGING)
 var ftreeData = 0
+var ftreeDataGedcom = 0
 var ftree = 0
 var nodes = 0
 var links = 0
 var svgg = 0
 
 
-function createFamilyTree(svgContainerSelector,ftreeData){
+function createFamilyTree(svgContainerSelector,ftreeData,isGedcom){
   // append the svg obgect to the body of the page
   // appends a 'group' element to 'svg'
   // moves the 'group' element to the top left margin
   var svg = d3.select(svgContainerSelector).append("svg")
     .attr("width", width + margin.left + margin.right)
     .attr("height", height + margin.top + margin.bottom)
+    .attr("class", isGedcom? "svg-gedcom": "svg-no-gedcom")
   svgg = svg.append("g")
     .attr("transform",
           "translate(" + margin.left + "," + margin.top + ")");
   
 
-  return updateFamilyTree(ftreeData);
+  return updateFamilyTree(ftreeData,undefined,isGedcom);
 }
 
-function updateFamilyTree(ftreeData, source){
+function updateFamilyTree(ftreeData, source,isGedcom){
   //good page for collapsible tree: https://bl.ocks.org/d3noob/43a860bc0024792f8803bba8ca0d5ecd
 
-  ftree = new fTreeBuilder(ftreeData,{width:100,height:100},{width:50,height:50})
+  if(isGedcom){
+    console.log("GEDCOM")
+    ftree = new fTreeBuilderGedcom(ftreeData,{width:100,height:100},{width:50,height:50})
+    // maps the node data to the tree layout
+    nodes = ftree.prettyNodes()
+    links = ftree.prettyLinks()
+  } else {
+    console.log("no GEDCOM")
+    ftree = new fTreeBuilder(ftreeData,{width:100,height:100},{width:50,height:50})
+    // maps the node data to the tree layout
+    nodes = ftree.nodes()
+    links = ftree.links()
+  }
+
 
   if(!source){
     source = {x:ftree.width/2,y:0}
   }
 
-  // maps the node data to the tree layout
-  nodes = ftree.nodes()
-  links = ftree.links()
 
 
   // adds the links between the nodes
@@ -137,6 +151,7 @@ function updateFamilyTree(ftreeData, source){
   nodeEnter.append("text")
   .attr("dy", ".35em")
   .attr("y", 20)
+  .attr("transform", "rotate(20)")
   .style("text-anchor", "middle")
   .text(function(d) { return d.name; });
 
@@ -154,7 +169,7 @@ function updateFamilyTree(ftreeData, source){
 }
 
 
-$.getJSON( "basic_family.json", function( treeData ) {
+$.getJSON( "data/basic_family.json", success=function( treeData ) {
   ftreeData = treeData
 
   createFamilyTree("#graph",ftreeData)
@@ -162,56 +177,45 @@ $.getJSON( "basic_family.json", function( treeData ) {
 
 });
 
+// ==================== LOAD initial GEDCOM FROM SERVER ====================
 
-// DEFAULTSDEEP TEST
+var d3ized_ged = 0
+var resp = $.get( "data/example_gedcom.ged" ,function(data){
+  d3ized_ged = parseGedcom.d3ize(parseGedcom.parse(data));
+  d3ized_ged.nodes = addLinksToNodes(d3ized_ged.nodes)
 
-linkedFromSourceNode = {
-  ll: "huhu",
-  arr: [1,2,3]
+  createFamilyTree("#graph2",d3ized_ged,true)
+}  );
+// ==================== FILE DROP ====================
+
+function over() {
+  d3.event.stopPropagation();
+  d3.event.preventDefault();
+  d3.event.dataTransfer.dropEffect = 'copy';
 }
 
-source = {
-  aa: 11,
-  bb: 22,
-  cc: {
-    ccc: "c"
-  },
-  dd: 44,
-  links: [linkedFromSourceNode]
-}
+var svg = d3.select('#gedcom-dropzone')
+  .attr('width', width)
+  .attr('height', height)
+  .attr('dropzone', 'copy')
+  .on('drop', function(e) {
+      d3.event.stopPropagation();
+      d3.event.preventDefault();
+      var f = d3.event.dataTransfer.files[0],
+          reader = new FileReader();
 
-linkedFromTargetNode = {
-  ll: "haha",
-  arr: [4,5,6]
-}
-linkedFromTargetNode2 = {
-  ll: "HOHO",
-  arr: [7,8,9]
-}
+      reader.onload = function(e) {
+        console.log("GEDCOM LOADED")
+        console.log("content:\n"+e.target.result);
+        console.log("parsed content in d3ized_ged:")
+        d3ized_ged = parseGedcom.d3ize(parseGedcom.parse(e.target.result));
+        console.log(d3ized_ged)
+      };
 
-target = {
-  aa: 1,
-  bb: 2,
-  cc: {
-    aaa: "a",
-    bbb: "b"
-  },
-  links:[linkedFromTargetNode,linkedFromTargetNode2]
-}
+      reader.readAsText(f);
+  })
+  .on('dragenter', over)
+  .on('dragexit', over)
+  .on('dragover', over);
 
-linkedFromTargetNode2.circularRef = target
 
-result = _.defaultsDeep(target,source)
-target==result // true!
-target.links[1]==linkedFromTargetNode2 // true
-target.links[1].circularRef==linkedFromTargetNode2.circularRef // true
-target==linkedFromTargetNode2.circularRef // true
-
-/*
-Basic: _.defaultsDeep() mutates target objects & returns it as result
-Objects: it is non-ambiguous&trivial with objects: add missing properties, doesn't touch the pre-existing ones in the target objects
-Arrays:
-it is more tricky with arrays: sometimes, one might want that source&target of a given array be appended, here
-a source array element is considered the source for the target array element with same index... CAUTION WITH ARRAYS!
-Circular references: seems to work without problem
-*/
