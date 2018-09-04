@@ -169,7 +169,7 @@ function updateFamilyTree(ftreeData, source,isGedcom){
 }
 
 
-$.getJSON( "basic_family.json", success=function( treeData ) {
+$.getJSON( "data/basic_family.json", success=function( treeData ) {
   ftreeData = treeData
 
   createFamilyTree("#graph",ftreeData)
@@ -180,7 +180,7 @@ $.getJSON( "basic_family.json", success=function( treeData ) {
 // ==================== LOAD initial GEDCOM FROM SERVER ====================
 
 var d3ized_ged = 0
-var resp = $.get( "./example_gedcom.ged" ,function(data){
+var resp = $.get( "data/example_gedcom.ged" ,function(data){
   d3ized_ged = parseGedcom.d3ize(parseGedcom.parse(data));
   d3ized_ged.nodes = addLinksToNodes(d3ized_ged.nodes)
 
