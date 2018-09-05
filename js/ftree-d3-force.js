@@ -49,6 +49,7 @@ console.log("hellooo")
 var simulation = 0;
 var ftree=0;
 var gnodes=0;
+var fnodes=0;
 var glinks=0;
 function buildGraph(graph) {
   graph.nodes = addLinksToNodes(graph.nodes)
@@ -56,6 +57,7 @@ function buildGraph(graph) {
   graph.nodes = ftree.prettyNodes()
   graph.nodes.forEach(n => n.fy = n.depth*30) // fix their y attribute according to depth
   graph.links = ftree.links
+  fnodes = ftree.nodes;
   gnodes = graph.nodes;
   glinks = graph.links;
 
