@@ -27,13 +27,11 @@ function addLinksToNodes(nodes, onlyId = true){
     }
 
     fams = getTagsData(node,"FAMS")
-    if(fams[0]){
-      node.fams = onlyId? fams : fams.map(n => getNodeFromId(nodes, n))
-    }
+    node.fams = onlyId? fams : fams.map(n => getNodeFromId(nodes, n))
+    
     chil = getTagsData(node,"CHIL")
-    if(chil[0]){
-      node.chil = onlyId? chil : chil.map(n => getNodeFromId(nodes, n))
-    }
+    node.chil = onlyId? chil : chil.map(n => getNodeFromId(nodes, n))
+    
     return node;
   }
   
