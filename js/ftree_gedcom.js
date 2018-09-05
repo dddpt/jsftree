@@ -5,6 +5,28 @@ class fTreeBuilderGedcom{
     /*
     data should be an object with keys "nodes" and "links" as returned by addLinksToNodes() after parseGedcom.d3ize() a gedcom file
     */
+    // if no centerNodeId, set it as the first family with 2 spouses
+    if(!centerNodeId){
+      for(let n in data.nodes){
+        console.log("node:")
+        console.log(data.nodes[n])
+        console.log("node.id:"+data.nodes[n].id)
+        console.log("data.nodes[n].tag===FAM")
+        console.log(data.nodes[n].tag==="FAM")
+        console.log("data.nodes[n].tag===FAM & data.nodes[n].husb")
+        console.log(data.nodes[n].tag==="FAM" & data.nodes[n].husb!=undefined)
+        console.log("data.nodes[n].tag===FAM & data.nodes[n].husb & data.nodes[n].wife")
+        console.log(data.nodes[n].tag==="FAM" & data.nodes[n].husb!=undefined & data.nodes[n].wife!=undefined)
+        if(data.nodes[n].tag==="FAM" & data.nodes[n].husb!=undefined & data.nodes[n].wife!=undefined){
+          console.log("DONE!")
+          centerNodeId=data.nodes[n].id;
+          break;
+        }
+      }
+    }
+    console.log("centerNodeId:")
+    console.log(centerNodeId)
+
 
     this.nodeSize = nodeSize  // object with width and height value
     this.nodeSeparation = nodeSeparation // object with width and height value
@@ -174,24 +196,31 @@ function sleep(milliseconds) {
   }
 }
 
-/* nodes should be in the form as a fTreeBuilderGedcom.nodes
-links:
-famc
-husb
-wife
-fams[]
-chil[]
+/*
+Function computing family tree nodes' initial positions for a d3-force layout
+Ensure minimal descendancy-lines-crossing in most cases, see exceptions below
+
+nodes should be in the form as fTreeBuilderGedcom.nodes
+centerNodeId should be a family node, not an indiv node
+relatives' node ids are expected to be in each node properties: famc, husb, wife, fams[], chil[]
+Line-crossing avoidance/good layout not implemented for:
+- multiple marriages
+- Multiple branches crossing back the depth of the center node (for example: center's aunt having grand-children and center's son-in-law having grand-parents)
 */
 function computeNodesInitialPositions(nodes, centerNodeId){
-  let nodeVisitIndex=0
-    /*
+  let nodeVisitIndex=0;
+  // global min/max x position at depth of center node
+  let minxCenterDepth=0,
+    maxxCenterDepth=0,
+    centerDepth = nodes[centerNodeId].depth;
+
+  /*
   recursive function successively called on every node, starting at center
   x: x position of node
   dx: positive value, indicating by how much next nodes should be offset
   exteriorDirection: 1 or -1, indicates where is the exterior of the tree, relative to the last node computed
   */
   function _computeNodesInitialPositionsRecursive(node, x, dx, exteriorDirection){
-    console.log("_computeNodesInitialPositionsRecursive() for node: "+node.id+" node.name: "+node.name+" X="+x.toFixed(2)+" dx="+dx.toFixed(2)+" extDir="+exteriorDirection)
     //sleep(10)
     /*
     for any node:
@@ -212,13 +241,26 @@ function computeNodesInitialPositions(nodes, centerNodeId){
 
     */
     if(node.x!=undefined){
+      console.log("_computeNodesInitialPositionsRecursive() node already done: "+node.id)
       return;
+    }
+    console.log("_computeNodesInitialPositionsRecursive() for "+nodeVisitIndex+"th node.id="+node.id+" node.name="+node.name+" node.depth="+node.depth+" X="+x.toFixed(2)+" dx="+dx.toFixed(2)+" extDir="+exteriorDirection)
+    
+    if(node.depth==centerDepth){
+      minxCenterDepth = minxCenterDepth<x? minxCenterDepth:x;
+      maxxCenterDepth = maxxCenterDepth>x? maxxCenterDepth:x;
+      console.log("UPDATE LEVEL 0: minxCenterDepth="+minxCenterDepth+", maxxCenterDepth="+maxxCenterDepth)
     }
     node.x=x
     node.visitIndex = nodeVisitIndex
     nodeVisitIndex++
     if(node.tag==="INDI"){
-      if(node.famc) _computeNodesInitialPositionsRecursive(nodes[node.famc], x + exteriorDirection * dx, dx/2, exteriorDirection)
+      let famcx = x + exteriorDirection * dx
+      if(node.depth==centerDepth+1 & famcx> minxCenterDepth & famcx < maxxCenterDepth){
+        console.log("BACK TO LEVEL 0")
+        famcx = famcx-minxCenterDepth < maxxCenterDepth-famcx? minxCenterDepth-20 : maxxCenterDepth+20;
+      }
+      if(node.famc) _computeNodesInitialPositionsRecursive(nodes[node.famc], famcx, dx/2, exteriorDirection)
       // fams: only working for fams with only 1 element as of now
       if(node.fams) node.fams.forEach( n=> _computeNodesInitialPositionsRecursive(nodes[n], x + exteriorDirection * dx, dx/2, exteriorDirection))
     }
@@ -230,16 +272,12 @@ function computeNodesInitialPositions(nodes, centerNodeId){
       console.log(partners)
       partners = partners.filter(p => nodes[p].x===undefined) //only keep yet non-positioned partner(s)
 
-
       if(partners[0]) _computeNodesInitialPositionsRecursive(nodes[partners[0]], x + exteriorDirection * dx, dx/2, exteriorDirection)
       if(partners[1]) _computeNodesInitialPositionsRecursive(nodes[partners[1]], x - exteriorDirection * dx, dx/2, - exteriorDirection)
 
       let children = node.chil
-      //console.log("children:")
-      //console.log(children)
       children.filter(c => nodes[c].x===undefined) //only keep yet non-positioned children
       if(children.length>0){
-        //console.log("children.length>0!")
         children = children.sort((c0,c1)=> c1.minDepth - c0.minDepth) // sort children with largest U-turn first
         let nbChil = children.length
         /* 
@@ -255,16 +293,19 @@ function computeNodesInitialPositions(nodes, centerNodeId){
         }
         */
         for (var i = 0; i<nbChil ; i++) {
-          dxFactor = (i%2)==0? (nbChil-i-1)/(2*nbChil-2) : -(nbChil-i)/(2*nbChil-2) //dxFactor: put largest U-turns at extremities of layout
-          extDirFactor = Math.sign(dxFactor-nbChil/2+0.1)
-          newx = x + exteriorDirection * dx * dxFactor
-          newdx = dx/(nbChil+1)
-          //console.log("computing children position for child i="+i+":"+children[i])
-          //console.log("nodes[children[i]]:")
-          //console.log(nodes[children[i]])
+          let numerator = nbChil==1? 1 : (2*nbChil-2)
+          let dxFactor = (i%2)==0? (nbChil-i-1)/numerator : -(nbChil-i)/numerator //dxFactor: put largest U-turns at extremities of layout
+          let extDirFactor = Math.sign(dxFactor-nbChil/2+0.1)
+          let newx = x + exteriorDirection * dx * dxFactor
+          let newdx = dx/(2*(nbChil+1)) // ensure there is room for one partner at least
+          if(node.depth==centerDepth-1 & newx> minxCenterDepth & newx < maxxCenterDepth){
+            console.log("BACK TO LEVEL 0")
+            newx = newx-minxCenterDepth < maxxCenterDepth-newx? minxCenterDepth-20 : maxxCenterDepth+20;
+          }
+          console.log("dxFactor="+dxFactor+/*", extDirFactor="+extDirFactor+", newx="+newx+*/", newdx="+newdx+", nbChil="+nbChil)
           _computeNodesInitialPositionsRecursive(nodes[children[i]], newx, newdx, extDirFactor*exteriorDirection)
         }
-      }//else{console.log("children.length==0!")}
+      }
     }
   }
   _computeNodesInitialPositionsRecursive(nodes[centerNodeId], 0,100,1);
