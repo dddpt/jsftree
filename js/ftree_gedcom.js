@@ -50,7 +50,8 @@ class fTreeBuilderGedcom{
     //this.nodes = this._reorderNodesDepthFirst(this.nodes)
     //this.nodes = this._computeLayout(this.nodes,nodeSize,nodeSeparation)
     this.nodes = computeNodesInitialPositions(this.nodes,centerNodeId)
-    
+    this.nodes = this._computeLayout(this.nodes,nodeSize,nodeSeparation)
+
     gnodes = this.nodes
   }
 
@@ -142,11 +143,14 @@ class fTreeBuilderGedcom{
     //let elementsPerRow = _.countBy(this.depths)
     //let rowWidth = elementsPerRow * (this.nodeSize.width + this.nodeSeparation.width) - this.nodeSeparation.width
     let nodesPerRow = _.groupBy(nodes, n => n.depth)
+    console.log("nodesPerRow")
+    console.log(nodesPerRow)
     //let rowsWidths = Object.keys(nodesPerRow).map(r => _.sumBy(nodesPerRow[r],v=>v.nodeSize.width+this.nodeSeparation.width))
     let rowsWidths = _.map(nodesPerRow,r => _.sumBy(r,v=>v.nodeSize.width+nodeSeparation.width))
     rowsWidths = rowsWidths.map(rw=>rw-nodeSeparation.width) // delete last useless separation
     this.width = _.max(rowsWidths)
     _.map(nodesPerRow,(row,depth) => {
+      row.sort((a,b) => a.x-b.x)
       let xpos = (this.width-rowsWidths[depth])/2
       let ypos = depth*(nodeSize.height+nodeSeparation.height) + nodeSize.height/2
       for(let i in row){
@@ -213,6 +217,8 @@ function computeNodesInitialPositions(nodes, centerNodeId){
   let minxCenterDepth=0,
     maxxCenterDepth=0,
     centerDepth = nodes[centerNodeId].depth;
+  // minimal dx factor
+  let mindx=100
 
   /*
   recursive function successively called on every node, starting at center
@@ -254,6 +260,7 @@ function computeNodesInitialPositions(nodes, centerNodeId){
     node.x=x
     node.visitIndex = nodeVisitIndex
     nodeVisitIndex++
+    mindx = mindx<dx?mindx:dx;
     if(node.tag==="INDI"){
       let famcx = x + exteriorDirection * dx
       if(node.depth==centerDepth+1 & famcx> minxCenterDepth & famcx < maxxCenterDepth){
@@ -280,18 +287,6 @@ function computeNodesInitialPositions(nodes, centerNodeId){
       if(children.length>0){
         children = children.sort((c0,c1)=> c1.minDepth - c0.minDepth) // sort children with largest U-turn first
         let nbChil = children.length
-        /* 
-        //test of the dxFactor loop: good!
-        var dxfs=[], eds=[],newxs=[],dx=100,exteriorDirection=1,x=0, nbChil=5;
-        for (var i = 0; i<nbChil ; i++) {
-          dxFactor = (i%2)==0? (nbChil-i-1)/(2*nbChil-2) : -(nbChil-i)/(2*nbChil-2) //dxFactor: put largest U-turns at extremities of layout
-          dxfs.push(dxFactor)
-          extDirFactor = Math.sign(dxFactor-nbChil/2+0.1)
-          eds.push(extDirFactor)
-          newx = x + exteriorDirection * dx * dxFactor
-          newxs.push(newx)
-        }
-        */
         for (var i = 0; i<nbChil ; i++) {
           let numerator = nbChil==1? 1 : (2*nbChil-2)
           let dxFactor = (i%2)==0? (nbChil-i-1)/numerator : -(nbChil-i)/numerator //dxFactor: put largest U-turns at extremities of layout
@@ -308,7 +303,7 @@ function computeNodesInitialPositions(nodes, centerNodeId){
       }
     }
   }
-  _computeNodesInitialPositionsRecursive(nodes[centerNodeId], 0,100,1);
+  _computeNodesInitialPositionsRecursive(nodes[centerNodeId], 0,mindx,1);
   console.log("computeNodesInitialPositions() done! ")
   console.log("nodes with initial positions:")
   console.log(JSON.parse(JSON.stringify(nodes)))
@@ -316,6 +311,7 @@ function computeNodesInitialPositions(nodes, centerNodeId){
   console.log(nodes[centerNodeId].x)
   console.log("nodes[centerNodeId]:")
   console.log(nodes[centerNodeId])
+
   return nodes;
 }
 

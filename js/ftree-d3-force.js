@@ -2,8 +2,9 @@
     parse = require('../');*/
 
 console.log("hello")
-var width = 1300,//window.innerWidth,
-    height = 500//window.innerHeight;
+var horizontalZoom = 1;
+var width = horizontalZoom*4000,//window.innerWidth,
+    height = 2000//window.innerHeight;
 
 var color = d3.scaleOrdinal(d3.schemeCategory10);
 
@@ -53,46 +54,44 @@ var fnodes=0;
 var glinks=0;
 function buildGraph(graph) {
   graph.nodes = addLinksToNodes(graph.nodes)
-  ftree= new fTreeBuilderGedcom(graph,{width:100,height:100},{width:50,height:50})
-  graph.nodes = ftree.prettyNodes()
-  graph.nodes.forEach(n => n.y = n.depth*30) // fix their y attribute according to depth
-  graph.links = ftree.links
-  fnodes = ftree.nodes;
-  gnodes = graph.nodes;
+  ftree= new fTreeBuilderGedcom(graph,{width:10,height:10},{width:30,height:30})
+  //ftree.nodes = _.forEach(ftree.nodes,n => {n.y = n.depth*30;n.x=horizontalZoom*n.x}) // fix their y attribute according to depth
   console.log("initial gnodes:")
-  console.log(JSON.parse(JSON.stringify(gnodes)))
-  glinks = graph.links;
-
+  console.log(JSON.parse(JSON.stringify(ftree.nodes)))
+  
   /*simulation = d3.forceSimulation()
+    .nodes(ftree.prettyNodes())
     //.alphaDecay(0.005)
+    // TINKER WITH FORCES
     .force("charge", d3.forceManyBody().strength(5))
     .force("centering", d3.forceCenter())
     .force("collision", d3.forceCollide(10))
-    .force("link", d3.forceLink().distance(-10).id(d=>d.id))*/
+    .force("link", d3.forceLink(ftree.links).distance(10).id(d=>d.id))
+    //.force("link", d3.forceLink(ftree.links).strength(link=> 1 / Math.min(d3.count(link.source), d3.count(link.target))).id(d=>d.id))
+  */
 
-  //simulation.nodes(graph.nodes)
-  //simulation.force("link").links(graph.links)
+    //simulation.force("link").links)(graph.links)
 
   var svgg = svg.append("g")
-    .attr("transform","translate("+width/2+","+height/3+")")
+    .attr("transform","translate("+0+","+50+")")
     //.attr("transform","translate("+width/2+","+height/2+")")
-    //.attr("transform","translate("+width/2+","+0+")")
   
   var link = svgg.selectAll('.link')
-      .data(ftree.prettyLinks())
+      .data(ftree.prettyLinks()) // with nodes at fixed initial position
+    //.data(ftree.links) //when using simulation
     .enter().append('line')
       .attr('class', 'link')
       //.style('stroke-width', function(d) { return Math.sqrt(d.value); });
-      .attr('x1', d => 3*d.source.x)
+      .attr('x1', d => horizontalZoom*d.source.x)
       .attr('y1', d => d.source.y)
-      .attr('x2', d => 3*d.target.x)
+      .attr('x2', d => horizontalZoom*d.target.x)
       .attr('y2', d => d.target.y);
 
   var node = svgg.selectAll('.node')
       .data(graph.nodes)
     .enter().append('g')
       .attr('class', 'node')
-      .attr('transform', d => 'translate(' + [3*d.x, d.y] + ')');
+      .attr('transform', d => 'translate(' + [horizontalZoom*d.x, d.y] + ')');
 
 
   let nodeVisitColor = d3.scaleSequential(d3.interpolateInferno).domain([0,1.5*graph.nodes.length])
@@ -111,12 +110,12 @@ function buildGraph(graph) {
       
 
   /*simulation.on('tick', function() {
-    link.attr('x1', d => d.source.x)
+    link.attr('x1', d => horizontalZoom*d.source.x)
         .attr('y1', d => d.source.y)
-        .attr('x2', d => d.target.x)
+        .attr('x2', d => horizontalZoom*d.target.x)
         .attr('y2', d => d.target.y);
 
-    node.attr('transform', d => 'translate(' + [5*d.x, 2*d.y] + ')');
+    node.attr('transform', d => 'translate(' + [horizontalZoom*d.x, d.y] + ')');
   });*/
 }
 
@@ -132,8 +131,9 @@ gedcome_files = [
   "data/KoranFamilyTree.ged",
   "data/royal92.ged"// too large!
 ]
-var resp = $.get( gedcome_files[3] ,function(data){
-  var d3ized_data = parseGedcom.d3ize(parseGedcom.parse(data))
+var d3ized_data=0
+var resp = $.get( gedcome_files[1] ,function(data){
+  d3ized_data = parseGedcom.d3ize(parseGedcom.parse(data))
   console.log("d3ized_data")
   console.log(d3ized_data)
   dropHint.remove();
