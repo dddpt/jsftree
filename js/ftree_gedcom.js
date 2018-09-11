@@ -1,195 +1,65 @@
 
 var gnodes=0
-class fTreeBuilderGedcom{
-  constructor(data, nodeSize, nodeSeparation,centerNodeId){
-    /*
-    data should be an object with keys "nodes" and "links" as returned by addLinksToNodes() after parseGedcom.d3ize() a gedcom file
-    */
-    // if no centerNodeId, set it as the first family with 2 spouses
-    if(!centerNodeId){
-      for(let n in data.nodes){
-        console.log("node:")
-        console.log(data.nodes[n])
-        console.log("node.id:"+data.nodes[n].id)
-        console.log("data.nodes[n].tag===FAM")
-        console.log(data.nodes[n].tag==="FAM")
-        console.log("data.nodes[n].tag===FAM & data.nodes[n].husb")
-        console.log(data.nodes[n].tag==="FAM" & data.nodes[n].husb!=undefined)
-        console.log("data.nodes[n].tag===FAM & data.nodes[n].husb & data.nodes[n].wife")
-        console.log(data.nodes[n].tag==="FAM" & data.nodes[n].husb!=undefined & data.nodes[n].wife!=undefined)
-        if(data.nodes[n].tag==="FAM" & data.nodes[n].husb!=undefined & data.nodes[n].wife!=undefined){
-          console.log("DONE!")
-          centerNodeId=data.nodes[n].id;
-          break;
-        }
-      }
-    }
-    console.log("centerNodeId:")
-    console.log(centerNodeId)
-
-
-    this.nodeSize = nodeSize  // object with width and height value
-    this.nodeSeparation = nodeSeparation // object with width and height value
-    this.nodes= data.nodes.reduce((dic,node) => {dic[node.id] = node; return dic},{}) // transform data.nodes array into dictionnary
-    this.links=data.links.map(l => {return {source: data.nodes[l.source].id, target: data.nodes[l.target].id   }}) // change from nodes index to nodes id
-    this.width = 0 // maximum width needed among the row
-
-    // add nodeSize to nodes and names to family nodes
-    this.nodes = _.mapValues(this.nodes,n=>{
-      //n.hidden = n.tag==="FAM"
-      n.nodeSize = n.tag==="FAM"? {width:10,height:10} : nodeSize;
-      if(n.tag==="FAM"){
-        n.name+= " "+(n.husb? this.nodes[n.husb].name:"")+","+(n.wife?this.nodes[n.wife].name:"")
-      }
-      return n
-    })
-
-    // assume that all non-connected nodes start at depth 0
-    // and set nodeSize to given nodesize for nodes and {0,0} for family nodes
-    this.nodes = this._computeDepth(this.nodes)
-    //this.nodes = this._reorderNodesDepthFirst(this.nodes)
-    this.nodes = computeNodesInitialPositions(this.nodes,centerNodeId)
-    this.nodes = this._computeLayout(this.nodes,nodeSize,nodeSeparation)
-
-    gnodes = this.nodes
-  }
-
+function fTreeBuilderGedcom(data, nodeSize, nodeSeparation,centerNodeId){
   /*
-  Computes depth of all the nodes in the family tree
-  Also computes max- and min-deph reachable from node relative to centerNode
-  adds following properties to each node:
-  - depth
-  - minDepth
-  - maxDepth
+  data should be an object with keys "nodes" and "links" as returned by addLinksToNodes() after parseGedcom.d3ize() a gedcom file
   */
-  _computeDepth(nodes,centerNodeId=Object.keys(nodes)[0]){
-    //console.log("CENTERNODE:" + centerNodeId)
-    // propagateDepth in the tree, returns the relative min-/max-depth of given node
-    function _propagateDepth(node,depth){
-      if(!node){return;}
-      //console.log("_propagateDepth! "+node.id+" at depth "+depth)
-      if(node.depth!=undefined){
-        if(node.depth!=depth){
-          throw "DepthError: "+node.id+" resolves to 2 different depths: "+node.depth+" and "+depth;
+  // if no centerNodeId, set it as the first family with 2 spouses
+  if(!centerNodeId){
+    for(let n in data.nodes){
+      if(data.nodes[n].tag==="FAM" & data.nodes[n].husb!=undefined & data.nodes[n].wife!=undefined){
+        centerNodeId=data.nodes[n].id;
+        break;
+      }
+    }
+  }
+  console.log("centerNodeId:")
+  console.log(centerNodeId)
+
+  nodes= data.nodes.reduce((dic,node) => {dic[node.id] = node; return dic},{}) // transform data.nodes array into dictionnary
+  links=data.links.map(l => {return {source: data.nodes[l.source].id, target: data.nodes[l.target].id   }}) // change from nodes index to nodes id
+  
+  // add nodeSize to nodes and names to family nodes
+  nodes = _.mapValues(nodes,n=>{
+    //n.hidden = n.tag==="FAM"
+    n.nodeSize = n.tag==="FAM"? {width:10,height:10} : nodeSize;
+    if(n.tag==="FAM"){
+      n.name+= " "+(n.husb? nodes[n.husb].name:"")+","+(n.wife?nodes[n.wife].name:"")
+    }
+    return n
+  })
+
+  // assume that all non-connected nodes start at depth 0
+  // and set nodeSize to given nodesize for nodes and {0,0} for family nodes
+  nodes = _computeDepth(nodes)
+  nodes = computeNodesInitialPositions(nodes,centerNodeId)
+  nodes = _computeLayout(nodes,nodeSize,nodeSeparation)
+
+  gnodes = nodes
+
+  return {
+    nodes:nodes,
+    links:links,
+    prettyNodes: function(){
+      return _.map(this.nodes, n=>n)
+    },
+    prettyLinks: function(){
+      return this.links.map(l=>{
+        return {
+          source:this.nodes[l.source],
+          target:this.nodes[l.target]
         }
-        return;
-      }
-      let maxmindepths = [[depth,depth]]
-
-      node.depth=depth
-      maxmindepths.push(_propagateDepth(nodes[node.husb],depth))
-      maxmindepths.push(_propagateDepth(nodes[node.wife],depth))
-      maxmindepths.push(_propagateDepth(nodes[node.famc],depth-1))
-      if(node.fams){
-        node.fams.forEach(fam => maxmindepths.push(_propagateDepth(nodes[fam],depth)))
-      }
-      if(node.chil){
-        node.chil.map(chil => maxmindepths.push(_propagateDepth(nodes[chil],depth+1)))
-      }
-      maxmindepths = maxmindepths.filter(mmd => mmd!=undefined)
-      node.minDepth = d3.min(maxmindepths,d=>d[0]) 
-      node.maxDepth = d3.max(maxmindepths,d=>d[1]) 
-      return [node.minDepth,node.maxDepth];
+      })
     }
-
-    _propagateDepth(nodes[centerNodeId],0)
-    _.forEach(nodes, n=>{
-      if(!n.depth){
-        _propagateDepth(n,0)
-      }
-    })
-
-    //ensure non-negative depths
-    let minDepth = d3.min(_.map(nodes,n => n.depth))
-    //nodes = _.mapValues(nodes, n=> {n.depth-=minDepth;return n})
-    _.forEach(nodes,function(n){
-      n.depth-=minDepth;
-      n.minDepth-=minDepth;
-      n.maxDepth-=minDepth;
-    })
-
-    return nodes;
   }
-
-  _reorderNodesDepthFirst(nodes){
-    let nodes2 = {}
-    let root = _.find(nodes,n=>n.depth==0)
-    _depthFirstOrder(root)
-
-    function _depthFirstOrder(node){
-      if(!node){return;}
-      if(nodes2[node.id]){return;}
-
-      _depthFirstOrder(nodes[node.wife])
-      nodes2[node.id] = node
-
-      if(node.fams){
-        node.fams.map(fam => _depthFirstOrder(nodes[fam]))
-      }
-      _depthFirstOrder(nodes[node.husb])
-      _depthFirstOrder(nodes[node.famc])
-      if(node.chil){
-        node.chil.map(chil => _depthFirstOrder(nodes[chil]))
-      }
-
-      return;
-    }
-
-    return nodes2;
-  }
-
-  _computeLayout(nodes,nodeSize,nodeSeparation){
-    //let elementsPerRow = _.countBy(this.depths)
-    //let rowWidth = elementsPerRow * (this.nodeSize.width + this.nodeSeparation.width) - this.nodeSeparation.width
-    let nodesPerRow = _.groupBy(nodes, n => n.depth)
-    console.log("nodesPerRow")
-    console.log(nodesPerRow)
-    //let rowsWidths = Object.keys(nodesPerRow).map(r => _.sumBy(nodesPerRow[r],v=>v.nodeSize.width+this.nodeSeparation.width))
-    let rowsWidths = _.map(nodesPerRow,r => _.sumBy(r,v=>v.nodeSize.width+nodeSeparation.width))
-    rowsWidths = rowsWidths.map(rw=>rw-nodeSeparation.width) // delete last useless separation
-    this.width = _.max(rowsWidths)
-    _.map(nodesPerRow,(row,depth) => {
-      row.sort((a,b) => a.x-b.x)
-      let xpos = (this.width-rowsWidths[depth])/2
-      let ypos = depth*(nodeSize.height+nodeSeparation.height) + nodeSize.height/2
-      for(let i in row){
-        xpos += row[i].nodeSize.width/2
-        row[i].y = ypos
-        row[i].fy = ypos
-        row[i].x = xpos
-        xpos += row[i].nodeSize.width/2 + nodeSeparation.width
-      }
-    })
-
-    return nodes;
-  }
-
-  getNodeById(id){
-    this.nodes.filter(n=>n.id===id)[0]
-  }
-
-  prettyNodes(){
-    return _.map(this.nodes, n=>n)
-  }
-
-  prettyLinks(){
-    let toidxy = node => {
-      return {
-        id:node.id,
-        x:node.x,
-        y:node.y
-      }
-    }
-
-    return this.links.map(l=>{
-      return {
-        source:this.nodes[l.source],
-        target:this.nodes[l.target]
-      }
-    })
-  }
-
 }
+
+
+
+
+
+
+
 
 function sleep(milliseconds) {
   var start = new Date().getTime();
@@ -198,6 +68,63 @@ function sleep(milliseconds) {
       break;
     }
   }
+}
+
+/*
+Computes depth of all the nodes in the family tree
+Also computes max- and min-deph reachable from node relative to centerNode
+adds following properties to each node:
+- depth
+- minDepth
+- maxDepth
+*/
+function _computeDepth(nodes,centerNodeId=Object.keys(nodes)[0]){
+  //console.log("CENTERNODE:" + centerNodeId)
+  // propagateDepth in the tree, returns the relative min-/max-depth of given node
+  function _propagateDepth(node,depth){
+    if(!node){return;}
+    //console.log("_propagateDepth! "+node.id+" at depth "+depth)
+    if(node.depth!=undefined){
+      if(node.depth!=depth){
+        throw "DepthError: "+node.id+" resolves to 2 different depths: "+node.depth+" and "+depth;
+      }
+      return;
+    }
+    let maxmindepths = [[depth,depth]]
+
+    node.depth=depth
+    maxmindepths.push(_propagateDepth(nodes[node.husb],depth))
+    maxmindepths.push(_propagateDepth(nodes[node.wife],depth))
+    maxmindepths.push(_propagateDepth(nodes[node.famc],depth-1))
+    if(node.fams){
+      node.fams.forEach(fam => maxmindepths.push(_propagateDepth(nodes[fam],depth)))
+    }
+    if(node.chil){
+      node.chil.map(chil => maxmindepths.push(_propagateDepth(nodes[chil],depth+1)))
+    }
+    maxmindepths = maxmindepths.filter(mmd => mmd!=undefined)
+    node.minDepth = d3.min(maxmindepths,d=>d[0]) 
+    node.maxDepth = d3.max(maxmindepths,d=>d[1]) 
+    return [node.minDepth,node.maxDepth];
+  }
+
+  _propagateDepth(nodes[centerNodeId],0)
+  _.forEach(nodes, n=>{
+    if(!n.depth){
+      _propagateDepth(n,0)
+    }
+  })
+
+  //ensure non-negative depths
+  let minDepth = d3.min(_.map(nodes,n => n.depth))
+  //nodes = _.mapValues(nodes, n=> {n.depth-=minDepth;return n})
+  _.forEach(nodes,function(n){
+    n.depth-=minDepth;
+    n.minDepth-=minDepth;
+    n.maxDepth-=minDepth;
+  })
+
+  return nodes;
 }
 
 /*
@@ -277,12 +204,6 @@ function computeNodesInitialPositions(nodes, centerNodeId){
       let partners = [node.wife,node.husb].sort(
         (n0,n1) => (n1==undefined? -1 : 100*nodes[n1].maxDepth-nodes[n1].minDepth) - (n0==undefined? -1 : 100*nodes[n0].maxDepth-nodes[n0].minDepth)
       ).filter(p => p)
-      console.log("partners:")
-      console.log(partners)
-      console.log("partner exterior:")
-      console.log(nodes[partners[0]])
-      console.log("partner interior:")
-      console.log(nodes[partners[1]])
       partners = partners.filter(p => nodes[p].x===undefined) //only keep yet non-positioned partner(s)
 
       if(partners[0]) _computeNodesInitialPositionsRecursive(nodes[partners[0]], x + exteriorDirection * dx, dx/2, exteriorDirection)
@@ -296,7 +217,7 @@ function computeNodesInitialPositions(nodes, centerNodeId){
         for (var i = 0; i<nbChil ; i++) {
           let numerator = nbChil==1? 1 : (2*nbChil-2)
           let dxFactor = (i%2)==0? (nbChil-i-1)/numerator : -(nbChil-i)/numerator //dxFactor: put largest U-turns at extremities of layout
-          let extDirFactor = Math.sign(dxFactor-nbChil/2+0.1)
+          let extDirFactor = Math.sign(dxFactor+0.0001)
           let newx = x + exteriorDirection * dx * dxFactor
           let newdx = dx/(2*(nbChil+1)) // ensure there is room for one partner at least
           if(node.depth==centerDepth-1 & newx> minxCenterDepth & newx < maxxCenterDepth){
@@ -322,6 +243,33 @@ function computeNodesInitialPositions(nodes, centerNodeId){
   return nodes;
 }
 
+
+function _computeLayout(nodes,nodeSize,nodeSeparation){
+  let nodesPerRow = _.groupBy(nodes, n => n.depth)
+  console.log("nodesPerRow")
+  console.log(nodesPerRow)
+  let rowsWidths = _.map(nodesPerRow,r => _.sumBy(r,v=>v.nodeSize.width+nodeSeparation.width))
+  rowsWidths = rowsWidths.map(rw=>rw-nodeSeparation.width) // delete last useless separation
+  let maxWidth = _.max(rowsWidths)
+  _.map(nodesPerRow,(row,depth) => {
+    row.sort((a,b) => a.x-b.x)
+    //let xpos = -maxWidth/2
+    let xpos = (maxWidth-rowsWidths[depth])/2
+    let xFactor = maxWidth/rowsWidths[depth]
+    let ypos = depth*(nodeSize.height+nodeSeparation.height) + nodeSize.height/2
+    for(let i in row){
+      //xpos += xFactor*row[i].nodeSize.width/2
+      xpos += row[i].nodeSize.width/2
+      row[i].y = ypos
+      row[i].fy = ypos
+      row[i].x = xpos
+      //xpos += xFactor*(row[i].nodeSize.width/2 + nodeSeparation.width)
+      xpos += (row[i].nodeSize.width/2 + nodeSeparation.width)
+    }
+  })
+
+  return nodes;
+}
 /*
 
 tasks:

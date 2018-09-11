@@ -68,7 +68,7 @@ function buildGraph(graph) {
     .force("collision", d3.forceCollide(20).strength(1))
     .force("link", d3.forceLink(ftree.links).distance(15).strength(0.1).id(d=>d.id))
     .velocityDecay(0.9)
-    //.alphaDecay(0.001)
+    .alphaDecay(0.01)
     
     //.force("link", d3.forceLink(ftree.links).strength(link=> 1 / Math.min(d3.count(link.source), d3.count(link.target))).id(d=>d.id))
     
@@ -139,11 +139,13 @@ gedcome_files = [
 ]
 var d3ized_data=0
 var d3sim=0
-var resp = $.get( gedcome_files[1] ,function(data){
+var resp = $.get( gedcome_files[0] ,function(data){
   d3ized_data = parseGedcom.d3ize(parseGedcom.parse(data))
   console.log("d3ized_data")
   console.log(d3ized_data)
   dropHint.remove();
   d3sim = buildGraph(d3ized_data);
+  d3sim.alpha(1)
+  d3sim.restart()
 }  );
 console.log("hellooooo")
