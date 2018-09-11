@@ -3,7 +3,7 @@
 
 console.log("hello")
 var horizontalZoom = 1;
-var width = horizontalZoom*4000,//window.innerWidth,
+var width = horizontalZoom*6000,//window.innerWidth,
     height = 2000//window.innerHeight;
 
 var color = d3.scaleOrdinal(d3.schemeCategory10);
@@ -59,26 +59,29 @@ function buildGraph(graph) {
   console.log("initial gnodes:")
   console.log(JSON.parse(JSON.stringify(ftree.nodes)))
   
-  /*simulation = d3.forceSimulation()
+  simulation = d3.forceSimulation()
     .nodes(ftree.prettyNodes())
-    //.alphaDecay(0.005)
+    .stop()
     // TINKER WITH FORCES
-    .force("charge", d3.forceManyBody().strength(5))
-    .force("centering", d3.forceCenter())
-    .force("collision", d3.forceCollide(10))
-    .force("link", d3.forceLink(ftree.links).distance(10).id(d=>d.id))
+    .force("charge", d3.forceManyBody().strength(-20))
+    //.force("centering", d3.forceCenter())
+    .force("collision", d3.forceCollide(20).strength(1))
+    .force("link", d3.forceLink(ftree.links).distance(15).strength(0.1).id(d=>d.id))
+    .velocityDecay(0.9)
+    //.alphaDecay(0.001)
+    
     //.force("link", d3.forceLink(ftree.links).strength(link=> 1 / Math.min(d3.count(link.source), d3.count(link.target))).id(d=>d.id))
-  */
+    
 
     //simulation.force("link").links)(graph.links)
 
   var svgg = svg.append("g")
-    .attr("transform","translate("+0+","+50+")")
-    //.attr("transform","translate("+width/2+","+height/2+")")
+    //.attr("transform","translate("+0+","+50+")")
+    .attr("transform","translate("+width/2+","+height/2+")")
   
   var link = svgg.selectAll('.link')
-      .data(ftree.prettyLinks()) // with nodes at fixed initial position
-    //.data(ftree.links) //when using simulation
+      //.data(ftree.prettyLinks()) // with links not gone through a d3 link force
+      .data(ftree.links) //when using link force in simulation
     .enter().append('line')
       .attr('class', 'link')
       //.style('stroke-width', function(d) { return Math.sqrt(d.value); });
@@ -109,14 +112,17 @@ function buildGraph(graph) {
       .attr("transform","translate(-5,15)")
       
 
-  /*simulation.on('tick', function() {
+  simulation.on('tick', function() {
     link.attr('x1', d => horizontalZoom*d.source.x)
         .attr('y1', d => d.source.y)
         .attr('x2', d => horizontalZoom*d.target.x)
         .attr('y2', d => d.target.y);
 
     node.attr('transform', d => 'translate(' + [horizontalZoom*d.x, d.y] + ')');
-  });*/
+    console.log("TICK-TACK!")
+  });
+
+  return simulation
 }
 
 console.log("helloooo")
@@ -132,11 +138,12 @@ gedcome_files = [
   "data/royal92.ged"// too large!
 ]
 var d3ized_data=0
+var d3sim=0
 var resp = $.get( gedcome_files[1] ,function(data){
   d3ized_data = parseGedcom.d3ize(parseGedcom.parse(data))
   console.log("d3ized_data")
   console.log(d3ized_data)
   dropHint.remove();
-  buildGraph(d3ized_data);
+  d3sim = buildGraph(d3ized_data);
 }  );
 console.log("hellooooo")

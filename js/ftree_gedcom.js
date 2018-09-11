@@ -48,7 +48,6 @@ class fTreeBuilderGedcom{
     // and set nodeSize to given nodesize for nodes and {0,0} for family nodes
     this.nodes = this._computeDepth(this.nodes)
     //this.nodes = this._reorderNodesDepthFirst(this.nodes)
-    //this.nodes = this._computeLayout(this.nodes,nodeSize,nodeSeparation)
     this.nodes = computeNodesInitialPositions(this.nodes,centerNodeId)
     this.nodes = this._computeLayout(this.nodes,nodeSize,nodeSeparation)
 
@@ -156,6 +155,7 @@ class fTreeBuilderGedcom{
       for(let i in row){
         xpos += row[i].nodeSize.width/2
         row[i].y = ypos
+        row[i].fy = ypos
         row[i].x = xpos
         xpos += row[i].nodeSize.width/2 + nodeSeparation.width
       }
@@ -183,8 +183,8 @@ class fTreeBuilderGedcom{
 
     return this.links.map(l=>{
       return {
-        source:toidxy(this.nodes[l.source]),
-        target:toidxy(this.nodes[l.target])
+        source:this.nodes[l.source],
+        target:this.nodes[l.target]
       }
     })
   }
@@ -258,6 +258,8 @@ function computeNodesInitialPositions(nodes, centerNodeId){
       console.log("UPDATE LEVEL 0: minxCenterDepth="+minxCenterDepth+", maxxCenterDepth="+maxxCenterDepth)
     }
     node.x=x
+    node.y=node.depth*30
+    node.fy=node.y
     node.visitIndex = nodeVisitIndex
     nodeVisitIndex++
     mindx = mindx<dx?mindx:dx;
@@ -273,10 +275,14 @@ function computeNodesInitialPositions(nodes, centerNodeId){
     }
     if(node.tag==="FAM"){
       let partners = [node.wife,node.husb].sort(
-        (n0,n1) => (n1==undefined? -1 : nodes[n1].maxDepth) - (n0==undefined? -1 : nodes[n0].maxDepth)
+        (n0,n1) => (n1==undefined? -1 : 100*nodes[n1].maxDepth-nodes[n1].minDepth) - (n0==undefined? -1 : 100*nodes[n0].maxDepth-nodes[n0].minDepth)
       ).filter(p => p)
       console.log("partners:")
       console.log(partners)
+      console.log("partner exterior:")
+      console.log(nodes[partners[0]])
+      console.log("partner interior:")
+      console.log(nodes[partners[1]])
       partners = partners.filter(p => nodes[p].x===undefined) //only keep yet non-positioned partner(s)
 
       if(partners[0]) _computeNodesInitialPositionsRecursive(nodes[partners[0]], x + exteriorDirection * dx, dx/2, exteriorDirection)
@@ -285,7 +291,7 @@ function computeNodesInitialPositions(nodes, centerNodeId){
       let children = node.chil
       children.filter(c => nodes[c].x===undefined) //only keep yet non-positioned children
       if(children.length>0){
-        children = children.sort((c0,c1)=> c1.minDepth - c0.minDepth) // sort children with largest U-turn first
+        children = children.sort((c0,c1)=> 100*c1.minDepth-c1.maxDepth - (100*c0.minDepth-c0.maxDepth)) // sort children with largest U-turn first
         let nbChil = children.length
         for (var i = 0; i<nbChil ; i++) {
           let numerator = nbChil==1? 1 : (2*nbChil-2)
@@ -311,6 +317,7 @@ function computeNodesInitialPositions(nodes, centerNodeId){
   console.log(nodes[centerNodeId].x)
   console.log("nodes[centerNodeId]:")
   console.log(nodes[centerNodeId])
+  console.log("mindx = "+ mindx)
 
   return nodes;
 }
