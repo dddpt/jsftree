@@ -1,6 +1,5 @@
 
-var gnodes=0
-function fTreeBuilderGedcom(data, nodeSize, nodeSeparation,centerNodeId){
+function layoutFamilyTree(data, nodeSize, nodeSeparation,centerNodeId){
   /*
   data should be an object with keys "nodes" and "links" as returned by addLinksToNodes() after parseGedcom.d3ize() a gedcom file
   */
@@ -13,11 +12,9 @@ function fTreeBuilderGedcom(data, nodeSize, nodeSeparation,centerNodeId){
       }
     }
   }
-  console.log("centerNodeId:")
-  console.log(centerNodeId)
 
-  nodes= data.nodes.reduce((dic,node) => {dic[node.id] = node; return dic},{}) // transform data.nodes array into dictionnary
-  links=data.links.map(l => {return {source: data.nodes[l.source].id, target: data.nodes[l.target].id   }}) // change from nodes index to nodes id
+  let nodes= data.nodes.reduce((dic,node) => {dic[node.id] = node; return dic},{}) // transform data.nodes array into dictionnary
+  let links=data.links.map(l => {return {source: data.nodes[l.source].id, target: data.nodes[l.target].id   }}) // change from nodes index to nodes id
   
   // add nodeSize to nodes and names to family nodes
   nodes = _.mapValues(nodes,n=>{
@@ -29,46 +26,31 @@ function fTreeBuilderGedcom(data, nodeSize, nodeSeparation,centerNodeId){
     return n
   })
 
-  // assume that all non-connected nodes start at depth 0
-  // and set nodeSize to given nodesize for nodes and {0,0} for family nodes
-  nodes = _computeDepth(nodes)
-  nodes = computeNodesInitialPositions(nodes,centerNodeId)
-  nodes = _computeLayout(nodes,nodeSize,nodeSeparation)
-
-  gnodes = nodes
+  //compute positions
+  nodes = _computeDepths(nodes)
+  nodes = _computeNodesRowOrder(nodes,centerNodeId,nodeSize,nodeSeparation)
+  nodes = _computeNodesInitialPositions(nodes,nodeSize,nodeSeparation)
 
   return {
     nodes:nodes,
     links:links,
-    prettyNodes: function(){
+    nodesArray: function(){
       return _.map(this.nodes, n=>n)
     },
-    prettyLinks: function(){
+    linksAsReferences: function(){
       return this.links.map(l=>{
         return {
-          source:this.nodes[l.source],
-          target:this.nodes[l.target]
+          source:nodes[l.source],
+          target:nodes[l.target]
         }
       })
-    }
+    },
+    applyForces:() => _applyForces(this,nodeSize,nodeSeparation)
   }
 }
 
 
 
-
-
-
-
-
-function sleep(milliseconds) {
-  var start = new Date().getTime();
-  for (var i = 0; i < 1e7; i++) {
-    if ((new Date().getTime() - start) > milliseconds){
-      break;
-    }
-  }
-}
 
 /*
 Computes depth of all the nodes in the family tree
@@ -78,7 +60,7 @@ adds following properties to each node:
 - minDepth
 - maxDepth
 */
-function _computeDepth(nodes,centerNodeId=Object.keys(nodes)[0]){
+function _computeDepths(nodes,centerNodeId=Object.keys(nodes)[0]){
   //console.log("CENTERNODE:" + centerNodeId)
   // propagateDepth in the tree, returns the relative min-/max-depth of given node
   function _propagateDepth(node,depth){
@@ -131,14 +113,14 @@ function _computeDepth(nodes,centerNodeId=Object.keys(nodes)[0]){
 Function computing family tree nodes' initial positions for a d3-force layout
 Ensure minimal descendancy-lines-crossing in most cases, see exceptions below
 
-nodes should be in the form as fTreeBuilderGedcom.nodes
+nodes should be in the form as layoutFamilyTree.nodes
 centerNodeId should be a family node, not an indiv node
 relatives' node ids are expected to be in each node properties: famc, husb, wife, fams[], chil[]
 Line-crossing avoidance/good layout not implemented for:
 - multiple marriages
 - Multiple branches crossing back the depth of the center node (for example: center's aunt having grand-children and center's son-in-law having grand-parents)
 */
-function computeNodesInitialPositions(nodes, centerNodeId){
+function _computeNodesRowOrder(nodes, centerNodeId,nodeSize={width:10,height:10},nodeSeparation={width:30,height:30}){
   let nodeVisitIndex=0;
   // global min/max x position at depth of center node
   let minxCenterDepth=0,
@@ -153,7 +135,7 @@ function computeNodesInitialPositions(nodes, centerNodeId){
   dx: positive value, indicating by how much next nodes should be offset
   exteriorDirection: 1 or -1, indicates where is the exterior of the tree, relative to the last node computed
   */
-  function _computeNodesInitialPositionsRecursive(node, x, dx, exteriorDirection){
+  function _computeNodesRowOrderRecursive(node, x, dx, exteriorDirection){
     //sleep(10)
     /*
     for any node:
@@ -174,18 +156,17 @@ function computeNodesInitialPositions(nodes, centerNodeId){
 
     */
     if(node.x!=undefined){
-      console.log("_computeNodesInitialPositionsRecursive() node already done: "+node.id)
       return;
     }
-    console.log("_computeNodesInitialPositionsRecursive() for "+nodeVisitIndex+"th node.id="+node.id+" node.name="+node.name+" node.depth="+node.depth+" X="+x.toFixed(2)+" dx="+dx.toFixed(2)+" extDir="+exteriorDirection)
+    //console.log("_computeNodesRowOrderRecursive() for "+nodeVisitIndex+"th node.id="+node.id+" node.name="+node.name+" node.depth="+node.depth+" X="+x.toFixed(2)+" dx="+dx.toFixed(2)+" extDir="+exteriorDirection)
     
     if(node.depth==centerDepth){
       minxCenterDepth = minxCenterDepth<x? minxCenterDepth:x;
       maxxCenterDepth = maxxCenterDepth>x? maxxCenterDepth:x;
-      console.log("UPDATE LEVEL 0: minxCenterDepth="+minxCenterDepth+", maxxCenterDepth="+maxxCenterDepth)
     }
     node.x=x
-    node.y=node.depth*30
+    //node.y=node.depth*(node.nodeSize.height+node.nodeSeparation.height) + node.nodeSize.height/2
+    node.y=node.depth*(nodeSize.height+nodeSeparation.height) + nodeSize.height/2
     node.fy=node.y
     node.visitIndex = nodeVisitIndex
     nodeVisitIndex++
@@ -193,12 +174,11 @@ function computeNodesInitialPositions(nodes, centerNodeId){
     if(node.tag==="INDI"){
       let famcx = x + exteriorDirection * dx
       if(node.depth==centerDepth+1 & famcx> minxCenterDepth & famcx < maxxCenterDepth){
-        console.log("BACK TO LEVEL 0")
         famcx = famcx-minxCenterDepth < maxxCenterDepth-famcx? minxCenterDepth-20 : maxxCenterDepth+20;
       }
-      if(node.famc) _computeNodesInitialPositionsRecursive(nodes[node.famc], famcx, dx/2, exteriorDirection)
+      if(node.famc) _computeNodesRowOrderRecursive(nodes[node.famc], famcx, dx/2, exteriorDirection)
       // fams: only working for fams with only 1 element as of now
-      if(node.fams) node.fams.forEach( n=> _computeNodesInitialPositionsRecursive(nodes[n], x + exteriorDirection * dx, dx/2, exteriorDirection))
+      if(node.fams) node.fams.forEach( n=> _computeNodesRowOrderRecursive(nodes[n], x + exteriorDirection * dx, dx/2, exteriorDirection))
     }
     if(node.tag==="FAM"){
       let partners = [node.wife,node.husb].sort(
@@ -206,8 +186,8 @@ function computeNodesInitialPositions(nodes, centerNodeId){
       ).filter(p => p)
       partners = partners.filter(p => nodes[p].x===undefined) //only keep yet non-positioned partner(s)
 
-      if(partners[0]) _computeNodesInitialPositionsRecursive(nodes[partners[0]], x + exteriorDirection * dx, dx/2, exteriorDirection)
-      if(partners[1]) _computeNodesInitialPositionsRecursive(nodes[partners[1]], x - exteriorDirection * dx, dx/2, - exteriorDirection)
+      if(partners[0]) _computeNodesRowOrderRecursive(nodes[partners[0]], x + exteriorDirection * dx, dx/2, exteriorDirection)
+      if(partners[1]) _computeNodesRowOrderRecursive(nodes[partners[1]], x - exteriorDirection * dx, dx/2, - exteriorDirection)
 
       let children = node.chil
       children.filter(c => nodes[c].x===undefined) //only keep yet non-positioned children
@@ -221,30 +201,20 @@ function computeNodesInitialPositions(nodes, centerNodeId){
           let newx = x + exteriorDirection * dx * dxFactor
           let newdx = dx/(2*(nbChil+1)) // ensure there is room for one partner at least
           if(node.depth==centerDepth-1 & newx> minxCenterDepth & newx < maxxCenterDepth){
-            console.log("BACK TO LEVEL 0")
             newx = newx-minxCenterDepth < maxxCenterDepth-newx? minxCenterDepth-20 : maxxCenterDepth+20;
           }
-          console.log("dxFactor="+dxFactor+/*", extDirFactor="+extDirFactor+", newx="+newx+*/", newdx="+newdx+", nbChil="+nbChil)
-          _computeNodesInitialPositionsRecursive(nodes[children[i]], newx, newdx, extDirFactor*exteriorDirection)
+          _computeNodesRowOrderRecursive(nodes[children[i]], newx, newdx, extDirFactor*exteriorDirection)
         }
       }
     }
   }
-  _computeNodesInitialPositionsRecursive(nodes[centerNodeId], 0,mindx,1);
-  console.log("computeNodesInitialPositions() done! ")
-  console.log("nodes with initial positions:")
-  console.log(JSON.parse(JSON.stringify(nodes)))
-  console.log("nodes[centerNodeId].x:")
-  console.log(nodes[centerNodeId].x)
-  console.log("nodes[centerNodeId]:")
-  console.log(nodes[centerNodeId])
-  console.log("mindx = "+ mindx)
+  _computeNodesRowOrderRecursive(nodes[centerNodeId], 0,mindx,1);
 
   return nodes;
 }
 
 
-function _computeLayout(nodes,nodeSize,nodeSeparation){
+function _computeNodesInitialPositions(nodes,nodeSize,nodeSeparation){
   let nodesPerRow = _.groupBy(nodes, n => n.depth)
   console.log("nodesPerRow")
   console.log(nodesPerRow)
@@ -253,35 +223,35 @@ function _computeLayout(nodes,nodeSize,nodeSeparation){
   let maxWidth = _.max(rowsWidths)
   _.map(nodesPerRow,(row,depth) => {
     row.sort((a,b) => a.x-b.x)
-    //let xpos = -maxWidth/2
-    let xpos = (maxWidth-rowsWidths[depth])/2
+    let xpos = -maxWidth/2
+    //let xpos = (maxWidth-rowsWidths[depth])/2
     let xFactor = maxWidth/rowsWidths[depth]
     let ypos = depth*(nodeSize.height+nodeSeparation.height) + nodeSize.height/2
     for(let i in row){
-      //xpos += xFactor*row[i].nodeSize.width/2
-      xpos += row[i].nodeSize.width/2
+      xpos += xFactor*row[i].nodeSize.width/2
+      //xpos += row[i].nodeSize.width/2
       row[i].y = ypos
       row[i].fy = ypos
       row[i].x = xpos
-      //xpos += xFactor*(row[i].nodeSize.width/2 + nodeSeparation.width)
-      xpos += (row[i].nodeSize.width/2 + nodeSeparation.width)
+      xpos += xFactor*(row[i].nodeSize.width/2 + nodeSeparation.width)
+      //xpos += (row[i].nodeSize.width/2 + nodeSeparation.width)
     }
   })
 
   return nodes;
 }
-/*
 
-tasks:
-- d3ize gedcom
-- add depth information
-- compute layout of nodes + links
-- draw nodes + links
-
-Algorithm with parse-gedcom:
-- d3ize gedcom input in d3ized_ged
-- compute famc, fams, etc for each node in d3ized_ged
-- calculating depth:
-  - set first node depth to 0
-  - set famc/fams/husb/wife/chil nodes to given depth
-*/
+function _applyForces(ftree,nodeSize,nodeSeparation){
+  console.log("_applyForces(), ftree:")
+  console.log(ftree)
+  simulation = d3.forceSimulation()
+    .nodes(ftree.nodesArray())
+    .force("charge", d3.forceManyBody().strength(-(nodeSeparation.width+nodeSize.width)/2))
+    //.force("centering", d3.forceCenter(width/2,height/2))
+    .force("collision", d3.forceCollide((nodeSeparation.width+nodeSize.width)/2.1).strength(1))
+    .force("link", d3.forceLink(ftree.links).distance(nodeSeparation.height/100).strength(0.9).id(d=>d.id))
+    .velocityDecay(0.4)
+    .alphaDecay(0.01);
+  
+  return simulation;
+}

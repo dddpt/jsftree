@@ -1,10 +1,9 @@
 /*var d3 = require('d3'),
     parse = require('../');*/
 
-console.log("hello")
 var horizontalZoom = 1;
-var width = horizontalZoom*6000,//window.innerWidth,
-    height = 2000//window.innerHeight;
+var width = horizontalZoom*1700,//window.innerWidth,
+    height = 1000//window.innerHeight;
 
 var color = d3.scaleOrdinal(d3.schemeCategory10);
 
@@ -14,7 +13,6 @@ function over() {
     d3.event.preventDefault();
     d3.event.dataTransfer.dropEffect = 'copy';
 }
-console.log("helloo")
 
 var svg = d3.select('body').append('svg')
     .attr('width', width)
@@ -43,8 +41,6 @@ var dropHint = svg.append('text')
     .attr('text-anchor', 'middle')
     .attr('transform', 'translate(' + [window.innerWidth / 2, window.innerHeight / 4] + ')');
 
-console.log("hellooo")
-
 /* ============================ BUILD GRAPH ============================ */
 
 var simulation = 0;
@@ -54,33 +50,23 @@ var fnodes=0;
 var glinks=0;
 function buildGraph(graph) {
   graph.nodes = addLinksToNodes(graph.nodes)
-  ftree= new fTreeBuilderGedcom(graph,{width:10,height:10},{width:30,height:30})
+  nodesize = {width:50,height:50}
+  nodeseparation = {width:100,height:100}
+
+  ftree= layoutFamilyTree(graph,nodesize,nodeseparation)
   //ftree.nodes = _.forEach(ftree.nodes,n => {n.y = n.depth*30;n.x=horizontalZoom*n.x}) // fix their y attribute according to depth
   console.log("initial gnodes:")
   console.log(JSON.parse(JSON.stringify(ftree.nodes)))
-  
-  simulation = d3.forceSimulation()
-    .nodes(ftree.prettyNodes())
-    .stop()
-    // TINKER WITH FORCES
-    .force("charge", d3.forceManyBody().strength(-20))
-    //.force("centering", d3.forceCenter())
-    .force("collision", d3.forceCollide(20).strength(1))
-    .force("link", d3.forceLink(ftree.links).distance(15).strength(0.1).id(d=>d.id))
-    .velocityDecay(0.9)
-    .alphaDecay(0.01)
     
-    //.force("link", d3.forceLink(ftree.links).strength(link=> 1 / Math.min(d3.count(link.source), d3.count(link.target))).id(d=>d.id))
-    
-
-    //simulation.force("link").links)(graph.links)
+  let simulation = ftree.applyForces()
+      .force("centering", d3.forceCenter(width/2,height/2))
 
   var svgg = svg.append("g")
-    //.attr("transform","translate("+0+","+50+")")
-    .attr("transform","translate("+width/2+","+height/2+")")
+    .attr("transform","translate("+100+","+100+")")
+    //.attr("transform","translate("+width/2+","+100+")")
   
   var link = svgg.selectAll('.link')
-      //.data(ftree.prettyLinks()) // with links not gone through a d3 link force
+      //.data(ftree.linksAsReferences()) // with links not gone through a d3 link force
       .data(ftree.links) //when using link force in simulation
     .enter().append('line')
       .attr('class', 'link')
@@ -100,7 +86,7 @@ function buildGraph(graph) {
   let nodeVisitColor = d3.scaleSequential(d3.interpolateInferno).domain([0,1.5*graph.nodes.length])
 
   node.append('circle')
-      .attr('r', 5)
+      .attr('r', 50)
       .style('fill', d=> nodeVisitColor(d.visitIndex) )//color(d.depth) );
 
   node.append('text')
@@ -109,7 +95,7 @@ function buildGraph(graph) {
 
   node.append('text')
       .text(d => d.visitIndex)
-      .attr("transform","translate(-5,15)")
+      .attr("transform","translate(-5,"+(nodesize.height+10)+")")
       
 
   simulation.on('tick', function() {
@@ -125,7 +111,6 @@ function buildGraph(graph) {
   return simulation
 }
 
-console.log("helloooo")
 
 /* ============================ LOADING DEFAULT GEDCOM ============================ */
 
@@ -142,10 +127,9 @@ var d3sim=0
 var resp = $.get( gedcome_files[0] ,function(data){
   d3ized_data = parseGedcom.d3ize(parseGedcom.parse(data))
   console.log("d3ized_data")
-  console.log(d3ized_data)
+  console.log(JSON.parse(JSON.stringify(d3ized_data)))
   dropHint.remove();
   d3sim = buildGraph(d3ized_data);
   d3sim.alpha(1)
-  d3sim.restart()
-}  );
-console.log("hellooooo")
+  //d3sim.restart()
+});

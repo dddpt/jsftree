@@ -2,13 +2,13 @@
 
 
 /*
-  takes care of adding to individuals:
+  takes care of adding to individuals nodes:
   - famc:famc_id the id of the parents' family node
   - fams:[fams_ids] array of ids of families this individual is a parent in
   ...and adding to family nodes:
   - husb
   - wife
-  - children:[] nodes
+  - chil:[] 
 */
 function addLinksToNodes(nodes, onlyId = true){
 
@@ -46,4 +46,18 @@ function getTagsData(node,tag) {
 
 function getNodeFromId(nodes,id) {
   return nodes.filter(n=>n.id===id)[0];
+}
+
+
+
+
+
+// Utility function
+function sleep(milliseconds) {
+  var start = new Date().getTime();
+  for (var i = 0; i < 1e7; i++) {
+    if ((new Date().getTime() - start) > milliseconds){
+      break;
+    }
+  }
 }
