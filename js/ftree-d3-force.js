@@ -50,22 +50,26 @@ var fnodes=0;
 var glinks=0;
 function buildGraph(graph) {
   graph.nodes = addLinksToNodes(graph.nodes)
-  nodesize = {width:50,height:50}
-  nodeseparation = {width:100,height:100}
+  let nodesize = {width:50,height:50}
+  let nodeseparation = {width:100,height:100}
 
-  ftree= layoutFamilyTree(graph,nodesize,nodeseparation)
+  let ftree= d3FamilyTree(graph,nodesize,nodeseparation)
   //ftree.nodes = _.forEach(ftree.nodes,n => {n.y = n.depth*30;n.x=horizontalZoom*n.x}) // fix their y attribute according to depth
   console.log("initial gnodes:")
   console.log(JSON.parse(JSON.stringify(ftree.nodes)))
     
   let simulation = ftree.applyForces()
-      .force("centering", d3.forceCenter(width/2,height/2))
+  ftree.center()
+      //.force("centering", d3.forceCenter(width/2,height/2))
+  /*while(simulation.alpha()>simulation.alphaMin()){
+    simulation.tick()
+  }*/
 
-  var svgg = svg.append("g")
-    .attr("transform","translate("+100+","+100+")")
-    //.attr("transform","translate("+width/2+","+100+")")
+  let svgg = svg.append("g")
+    //.attr("transform","translate("+100+","+100+")")
+    .attr("transform","translate("+(100-ftree.minX())+","+(100-ftree.minY())+")")
   
-  var link = svgg.selectAll('.link')
+  let link = svgg.selectAll('.link')
       //.data(ftree.linksAsReferences()) // with links not gone through a d3 link force
       .data(ftree.links) //when using link force in simulation
     .enter().append('line')
@@ -76,7 +80,7 @@ function buildGraph(graph) {
       .attr('x2', d => horizontalZoom*d.target.x)
       .attr('y2', d => d.target.y);
 
-  var node = svgg.selectAll('.node')
+  let node = svgg.selectAll('.node')
       .data(graph.nodes)
     .enter().append('g')
       .attr('class', 'node')
