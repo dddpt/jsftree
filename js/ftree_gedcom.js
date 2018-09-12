@@ -203,13 +203,15 @@ class fTreeBuilderGedcom{
   }
 
   /*
-  Compute nodes initial positions
+  Compute nodes initial positions before adjusting them with applyForces() 
   _computeNodesRowOrder() must have been called before
+
+  depth-rows can either be:
+  - justified: all rows take the same widths, and first and last nodes of each row are at the extremities
+  - centered: all nodes in a row have fixed horizontal distance and are centered.
   */
   _computeNodesInitialPositions(justified=false){
     let nodesPerRow = _.groupBy(this.nodes, n => n.depth)
-    console.log("nodesPerRow")
-    console.log(nodesPerRow)
     let rowsWidths = _.map(nodesPerRow,r => _.sumBy(r,v=>this.nodeSize.width+this.nodeSeparation.width))
     rowsWidths = rowsWidths.map(rw=>rw-this.nodeSeparation.width) // delete last useless separation
     let maxWidth = _.max(rowsWidths)
@@ -234,7 +236,7 @@ class fTreeBuilderGedcom{
   _computeNodesInitialPositions() must have been called before
 
   simulation's and forces' parameters chosen in the function are good for small trees.
-  For large trees, do not use this function, copy-paste its code and use adapted parameters.
+  For large trees (>20nodes), do not use this function, copy-paste its code and use adapted parameters.
   */
   applyForces(instantaneous=true){
     let simulation = d3.forceSimulation()
