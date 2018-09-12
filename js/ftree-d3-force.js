@@ -1,9 +1,9 @@
 /*var d3 = require('d3'),
     parse = require('../');*/
 
-console.log("hello")
-var width = window.innerWidth,
-    height = window.innerHeight;
+var horizontalZoom = 1;
+var width = horizontalZoom*1700,//window.innerWidth,
+    height = 1000//window.innerHeight;
 
 var color = d3.scaleOrdinal(d3.schemeCategory10);
 
@@ -13,7 +13,6 @@ function over() {
     d3.event.preventDefault();
     d3.event.dataTransfer.dropEffect = 'copy';
 }
-console.log("helloo")
 
 var svg = d3.select('body').append('svg')
     .attr('width', width)
@@ -42,67 +41,80 @@ var dropHint = svg.append('text')
     .attr('text-anchor', 'middle')
     .attr('transform', 'translate(' + [window.innerWidth / 2, window.innerHeight / 4] + ')');
 
-console.log("hellooo")
-
 /* ============================ BUILD GRAPH ============================ */
 
 var simulation = 0;
 var ftree=0;
 var gnodes=0;
+var fnodes=0;
 var glinks=0;
 function buildGraph(graph) {
   graph.nodes = addLinksToNodes(graph.nodes)
-  ftree= new fTreeBuilderGedcom(graph,{width:100,height:100},{width:50,height:50})
-  graph.nodes = ftree.prettyNodes()
-  graph.nodes.forEach(n => n.fy = n.depth*30) // fix their y attribute according to depth
-  graph.links = ftree.links
-  gnodes = graph.nodes;
-  glinks = graph.links;
+  let nodesize = {width:50,height:50}
+  let nodeseparation = {width:100,height:100}
 
-  simulation = d3.forceSimulation()
-    //.alphaDecay(0.005)
-    .force("charge", d3.forceManyBody().strength(5))
-    .force("centering", d3.forceCenter())
-    .force("collision", d3.forceCollide(10))
-    .force("link", d3.forceLink().distance(-10).id(d=>d.id))
+  let ftree= d3FamilyTree(graph,nodesize,nodeseparation)
+  //ftree.nodes = _.forEach(ftree.nodes,n => {n.y = n.depth*30;n.x=horizontalZoom*n.x}) // fix their y attribute according to depth
+  console.log("initial gnodes:")
+  console.log(JSON.parse(JSON.stringify(ftree.nodes)))
+    
+  let simulation = ftree.applyForces()
+  ftree.center()
+      //.force("centering", d3.forceCenter(width/2,height/2))
+  /*while(simulation.alpha()>simulation.alphaMin()){
+    simulation.tick()
+  }*/
 
-  simulation.nodes(graph.nodes)
-  simulation.force("link").links(graph.links)
-
-  var svgg = svg.append("g")
-      .attr("transform","translate("+width/2+","+height/2+")")
-      //.attr("transform","translate("+width/2+","+0+")")
+  let svgg = svg.append("g")
+    //.attr("transform","translate("+100+","+100+")")
+    .attr("transform","translate("+(100-ftree.minX())+","+(100-ftree.minY())+")")
   
-  var link = svgg.selectAll('.link')
-      .data(graph.links)
+  let link = svgg.selectAll('.link')
+      //.data(ftree.linksAsReferences()) // with links not gone through a d3 link force
+      .data(ftree.links) //when using link force in simulation
     .enter().append('line')
       .attr('class', 'link')
-      .style('stroke-width', function(d) { return Math.sqrt(d.value); });
+      //.style('stroke-width', function(d) { return Math.sqrt(d.value); });
+      .attr('x1', d => horizontalZoom*d.source.x)
+      .attr('y1', d => d.source.y)
+      .attr('x2', d => horizontalZoom*d.target.x)
+      .attr('y2', d => d.target.y);
 
-  var node = svgg.selectAll('.node')
+  let node = svgg.selectAll('.node')
       .data(graph.nodes)
     .enter().append('g')
       .attr('class', 'node')
-      //.call(simulation.drag);
+      .attr('transform', d => 'translate(' + [horizontalZoom*d.x, d.y] + ')');
+
+
+  let nodeVisitColor = d3.scaleSequential(d3.interpolateInferno).domain([0,1.5*graph.nodes.length])
 
   node.append('circle')
-      .attr('r', 5)
-      .style('fill', d=> {console.log("depth:"+d.depth+" COLOR: "+color(d.depth));return color(d.depth); });
+      .attr('r', 50)
+      .style('fill', d=> nodeVisitColor(d.visitIndex) )//color(d.depth) );
 
   node.append('text')
-      .text(d => d.id+", "+d.name);
+      .text(d => d.id+", "+d.name)
+      .attr("class","node-name");
+
+  node.append('text')
+      .text(d => d.visitIndex)
+      .attr("transform","translate(-5,"+(nodesize.height+10)+")")
+      
 
   simulation.on('tick', function() {
-    link.attr('x1', d => d.source.x)
+    link.attr('x1', d => horizontalZoom*d.source.x)
         .attr('y1', d => d.source.y)
-        .attr('x2', d => d.target.x)
+        .attr('x2', d => horizontalZoom*d.target.x)
         .attr('y2', d => d.target.y);
 
-    node.attr('transform', d => 'translate(' + [d.x, d.y] + ')');
+    node.attr('transform', d => 'translate(' + [horizontalZoom*d.x, d.y] + ')');
+    console.log("TICK-TACK!")
   });
+
+  return simulation
 }
 
-console.log("helloooo")
 
 /* ============================ LOADING DEFAULT GEDCOM ============================ */
 
@@ -114,10 +126,14 @@ gedcome_files = [
   "data/KoranFamilyTree.ged",
   "data/royal92.ged"// too large!
 ]
+var d3ized_data=0
+var d3sim=0
 var resp = $.get( gedcome_files[0] ,function(data){
-
-
+  d3ized_data = parseGedcom.d3ize(parseGedcom.parse(data))
+  console.log("d3ized_data")
+  console.log(JSON.parse(JSON.stringify(d3ized_data)))
   dropHint.remove();
-  buildGraph(parseGedcom.d3ize(parseGedcom.parse(data)));
-}  );
-console.log("hellooooo")
+  d3sim = buildGraph(d3ized_data);
+  d3sim.alpha(1)
+  //d3sim.restart()
+});
